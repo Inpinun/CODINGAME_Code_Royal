@@ -1,0 +1,163 @@
+import sys
+import math
+
+#INSTANCIATIONS Variables
+qact = None #Valid Queen action
+train = None # Training instructions
+l_site=[]
+site_le_plus_proche=0
+queen_x=queen_y=0
+queen_move_x=queen_move_y=0
+site_train = None
+queen_first_x = queen_first_y = None
+round_count = 0
+number_of_tower=0
+number_of_mines = 0
+bar_tower_x = bar_tower_y = 0
+
+
+#--instanciationObject Sites
+class sites:
+    def __init__(self,site_id,x,y,radius,ignore_1,ignore_2,structure_type,owner,param_1,param_2):
+        self.site_id=site_id
+        self.x=x
+        self.y=y
+        self.radius=radius
+        self.ignore_1=ignore_1
+        self.ignore_1=ignore_2
+        self.ignore_1=structure_type
+        self.ignore_1=owner
+        self.ignore_1=param_1
+        self.ignore_1=param_2
+
+distance=None
+
+num_sites = int(input())
+for i in range(num_sites):
+    site_id, x, y, radius = [int(j) for j in input().split()]
+    site=sites(site_id, x, y, radius,'','','','','','')
+    l_site.append(site)
+    print("Sites is",l_site[i].site_id, file=sys.stderr, flush=True)
+    
+
+
+# Méthodes------------------------------------------
+# --Méthodes : définition distance reine - site
+def trouver_distance(x1,y1,x2,y2):
+    distance=math.sqrt((x2-x1)**2+(y2-y1)**2)
+    return distance
+
+
+# game loop
+while True:
+    round_count=round_count+1
+    # touched_site: -1 if none
+    gold, touched_site = [int(i) for i in input().split()]
+    for i in range(num_sites):
+        # ignore_1: used in future leagues
+        # ignore_2: used in future leagues
+        # structure_type: -1 = No structure, 2 = Barracks
+        # owner: -1 = No structure, 0 = Friendly, 1 = Enemy
+        site_id, ignore_1, ignore_2, structure_type, owner, param_1, param_2 = [int(j) for j in input().split()]
+        l_site[site_id].ignore_1=ignore_1
+        l_site[site_id].ignore_2=ignore_2
+        l_site[site_id].structure_type=structure_type
+        l_site[site_id].owner=owner
+        l_site[site_id].param_1=param_1
+        l_site[site_id].param_2=param_2
+        
+
+    num_units = int(input())
+    for i in range(num_units):
+        # unit_type: -1 = QUEEN, 0 = KNIGHT, 1 = ARCHER
+        x, y, owner, unit_type, health = [int(j) for j in input().split()]
+        if unit_type==-1 and owner == 0:
+            queen_x = x
+            queen_y = y
+        if unit_type==-1 and owner == 0 and round_count == 1:
+            queen_first_x = x
+            queen_first_y = y
+    print("Queen localisation",queen_x,queen_y, file=sys.stderr, flush=True)
+    
+    # JEU--------------------------------------------------------------------
+    
+    print("Numsites is",num_sites, file=sys.stderr, flush=True)
+    print("Gold is",gold, file=sys.stderr, flush=True)
+    number_of_tower=0
+    number_of_mines=0
+    bar_tower_x = bar_tower_y = 0
+    #Action Queen
+    #--Trouver site vide le plus proche
+    distance=5000
+    for i in range(num_sites):
+        if trouver_distance(l_site[i].x, l_site[i].y, queen_x, queen_y)<distance and l_site[i].owner==-1:
+            distance=trouver_distance(l_site[i].x, l_site[i].y, queen_x, queen_y)
+            site_le_plus_proche=l_site[i].site_id
+    print("site le plus proche",site_le_plus_proche, file=sys.stderr, flush=True)
+    #--Move pour Aller vers le site vide le plus proche
+    
+    queen_move_x=l_site[site_le_plus_proche].x
+    queen_move_y=l_site[site_le_plus_proche].y
+    
+    #nombre de tours alliées & définition du barycentre
+    for i in range(num_sites):
+        if l_site[i].owner==0 and l_site[i].structure_type ==1:
+            number_of_tower += 1
+            bar_tower_x += l_site[i].x
+            bar_tower_y += l_site[i].y
+    if bar_tower_x != 0:
+        bar_tower_x = int(bar_tower_x/number_of_tower)
+    if bar_tower_y != 0:
+        bar_tower_y = int(bar_tower_y/number_of_tower)    
+
+    #Coordonnées barycentre tours alliées
+
+    #nombre de mines alliées
+    for i in range(num_sites):
+        if l_site[i].owner==0 and l_site[i].structure_type ==0:
+            number_of_mines += 1
+
+
+
+    #--Construction de casernes
+    if touched_site != -1 and l_site[touched_site].structure_type==-1:
+        qact = f"BUILD {touched_site} BARRACKS-KNIGHT"
+    elif queen_move_x > 0 or queen_move_y >0:
+        qact = f"MOVE {queen_move_x} {queen_move_y}"
+
+    #GAME GOALS
+    numb_tower_goal=5
+    numb_mine_goal=4
+
+    #Build and Move decisions
+    for i in range(num_sites):
+        if l_site[i].owner==0 and number_of_tower >= numb_tower_goal :
+            print("l_site i owner",l_site[i].owner, file=sys.stderr, flush=True)
+            queen_move_x = bar_tower_x
+            queen_move_y = bar_tower_y
+            for i in range(num_sites):
+                if l_site[i].owner==0 and l_site[i].structure_type ==2:
+                    site_train = l_site[i].site_id
+            qact = f"MOVE {queen_move_x} {queen_move_y}"
+        elif l_site[i].owner==0 and number_of_mines <= numb_mine_goal-1:
+            qact = f"BUILD {l_site[site_le_plus_proche].site_id} MINE"
+            for i in range(num_sites):
+                if l_site[i].owner==0 and l_site[i].structure_type ==2:
+                    site_train = l_site[i].site_id
+        elif l_site[i].owner==0 and number_of_tower <= numb_tower_goal and number_of_mines <= numb_mine_goal:
+            qact = f"BUILD {l_site[site_le_plus_proche].site_id} TOWER"
+            for i in range(num_sites):
+                if l_site[i].owner==0 and l_site[i].structure_type ==2:
+                    site_train = l_site[i].site_id    
+
+    #Training
+    if gold > 80 and site_train != None:
+
+        train = f"TRAIN {site_train}"
+    else : 
+        train = "TRAIN"
+
+    # First line: A valid queen action
+    # Second line: A set of training instructions
+    print(qact)
+    print(train)
